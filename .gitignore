@@ -1,0 +1,32 @@
+# Node modules
+node_modules/
+
+# Output files
+image-urls.txt
+image-urls-only.txt
+*.txt
+
+# Downloaded images
+images/
+*.jpg
+*.jpeg
+*.png
+*.gif
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Logs
+*.log
+npm-debug.log*
+
+# Environment variables
+.env
+.env.local
