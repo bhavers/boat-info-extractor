@@ -1,0 +1,20 @@
+{
+  "name": "boat-image-extractor",
+  "version": "1.0.0",
+  "description": "Extract all image URLs from boat listing pages",
+  "main": "extract-images.js",
+  "scripts": {
+    "start": "node extract-images.js",
+    "install-browser": "npx playwright install chromium"
+  },
+  "keywords": [
+    "playwright",
+    "web-scraping",
+    "image-extraction"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "playwright": "^1.40.0"
+  }
+}
