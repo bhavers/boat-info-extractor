@@ -113,12 +113,24 @@ async function extractImageUrls() {
     console.log(`📄 Navigating to: ${URL}`);
     await page.goto(URL, {
       waitUntil: "domcontentloaded",
-      timeout: 60000,
+      timeout: 10000,
     });
 
     // Wait for page to load and render completely
     console.log("⏳ Waiting for page to fully load and render...");
-    await page.waitForTimeout(5000); // Increased to 5 seconds for full rendering
+    await page.waitForTimeout(2000); // Increased to 5 seconds for full rendering
+
+    // Inject CSS to trigger "Meer weergeven" button by removing truncation
+    console.log("🎨 Injecting CSS to trigger 'Meer weergeven' button...");
+    await page.addStyleTag({
+      content: `
+        .data-html-inner-wrapper {
+          max-height: none !important;
+          position: static !important;
+        }
+      `,
+    });
+    await page.waitForTimeout(1000); // Wait for CSS to apply
 
     // Accept cookies if present - try multiple selectors
     console.log("🍪 Checking for cookie banner...");
@@ -160,7 +172,7 @@ async function extractImageUrls() {
 
     // Wait additional time before starting to interact with sections
     console.log("\n⏳ Waiting for dynamic content to stabilize...");
-    await page.waitForTimeout(5000);
+    await page.waitForTimeout(2000);
 
     // Expand all sections before capturing
     console.log("\n📂 Expanding all sections...");
@@ -216,7 +228,7 @@ async function extractImageUrls() {
                 if (await element.isVisible({ timeout: 300 })) {
                   await element.click();
                   console.log(`   ✓ Expanded: ${section}`);
-                  await page.waitForTimeout(2000); // Wait for content to load
+                  await page.waitForTimeout(1000); // Wait for content to load
                   expanded = true;
                   break;
                 }
@@ -239,59 +251,73 @@ async function extractImageUrls() {
       }
     }
 
-    // Wait longer for any dynamic content to load (buttons may appear with delay)
-    console.log("⏳ Waiting 5 seconds for dynamic content to fully render...");
-    await page.waitForTimeout(5000);
+    // Wait for dynamic content to load - button appears quickly after page load
+    console.log("⏳ Waiting for dynamic content to render...");
+    await page.waitForTimeout(3000);
 
-    // Now look for "Meer weergeven" buttons - try multiple selectors
+    // Now look for "Meer weergeven" buttons
     console.log("\n🔍 Looking for 'Meer weergeven' buttons...");
 
+    // Wait specifically for the button to appear in the DOM
+    try {
+      await page.waitForSelector(".show-more-less-interaction button", { timeout: 5000 });
+      console.log("   ✓ Found .show-more-less-interaction button in DOM");
+    } catch (e) {
+      console.log("   ⚠️  .show-more-less-interaction button not found, trying other selectors...");
+    }
+
     const meerWeergevenSelectors = [
-      '.show-more-less-interaction button:has-text("Meer weergeven")',
+      ".show-more-less-interaction button",
+      "div.show-more-less-interaction button",
       'button:has-text("Meer weergeven")',
-      'a:has-text("Meer weergeven")',
-      '[class*="show-more"] button:has-text("Meer")',
-      '[class*="read-more"] button:has-text("Meer")',
-      'button:text-is("Meer weergeven")',
-      'button:text("Meer weergeven")',
+      'button:has-text("Meer")',
     ];
 
     let totalClicked = 0;
 
     for (const selector of meerWeergevenSelectors) {
       try {
-        console.log(`   Trying selector: ${selector}`);
         const buttons = page.locator(selector);
         const count = await buttons.count();
 
         if (count > 0) {
-          console.log(`   Found ${count} button(s) with this selector`);
+          console.log(`   Found ${count} button(s) with selector: ${selector}`);
         }
 
         for (let i = 0; i < count; i++) {
           try {
             const button = buttons.nth(i);
-            if (await button.isVisible({ timeout: 500 })) {
-              const buttonText = await button.textContent();
-              console.log(`   Attempting to click button with text: "${buttonText}"`);
+
+            // Get button text
+            const buttonText = await button.textContent().catch(() => "");
+            const trimmedText = buttonText.trim();
+
+            // Only proceed if button contains "Meer" or "weergeven"
+            if (!trimmedText.toLowerCase().includes("meer") && !trimmedText.toLowerCase().includes("weergeven")) {
+              continue;
+            }
+
+            // Check if visible
+            const isVisible = await button.isVisible({ timeout: 500 }).catch(() => false);
+
+            if (isVisible) {
+              console.log(`   Clicking button: "${trimmedText}"`);
 
               await button.click();
               totalClicked++;
-              console.log(`   ✓ Clicked: Meer weergeven button ${totalClicked}`);
+              console.log(`   ✓ Clicked button ${totalClicked}`);
 
               // Wait for content to expand
-              await page.waitForTimeout(1000);
-
-              // Check if "Minder weergeven" appears
-              const minderButtons = page.locator('button:has-text("Minder weergeven")');
-              const minderCount = await minderButtons.count();
-              if (minderCount > 0) {
-                console.log(`   ✓ Confirmed: Found ${minderCount} "Minder weergeven" button(s)`);
-              }
+              await page.waitForTimeout(1500);
             }
           } catch (e) {
-            console.log(`   - Error clicking button ${i}: ${e.message}`);
+            // Skip this button
           }
+        }
+
+        // If we found and clicked buttons with this selector, don't try other selectors
+        if (totalClicked > 0) {
+          break;
         }
       } catch (e) {
         // Try next selector
@@ -299,7 +325,7 @@ async function extractImageUrls() {
     }
 
     if (totalClicked === 0) {
-      console.log("   - No 'Meer weergeven' buttons found or clicked");
+      console.log("   ⚠️  No 'Meer weergeven' buttons found or clicked");
     } else {
       console.log(`   ✅ Successfully clicked ${totalClicked} 'Meer weergeven' button(s)`);
     }
