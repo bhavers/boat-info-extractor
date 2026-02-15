@@ -116,9 +116,9 @@ async function extractImageUrls() {
       timeout: 60000,
     });
 
-    // Wait for page to load
-    console.log("⏳ Waiting for page to fully load...");
-    await page.waitForTimeout(3000);
+    // Wait for page to load and render completely
+    console.log("⏳ Waiting for page to fully load and render...");
+    await page.waitForTimeout(5000); // Increased to 5 seconds for full rendering
 
     // Accept cookies if present - try multiple selectors
     console.log("🍪 Checking for cookie banner...");
@@ -158,9 +158,12 @@ async function extractImageUrls() {
       console.log("ℹ️  Cookie handling skipped");
     }
 
+    // Wait additional time before starting to interact with sections
+    console.log("\n⏳ Waiting for dynamic content to stabilize...");
+    await page.waitForTimeout(5000);
+
     // Expand all sections before capturing
     console.log("\n📂 Expanding all sections...");
-    await page.waitForTimeout(1000);
 
     // Try to find and click all expandable sections
     const sections = ["Beschrijving", "Contactinformatie", "Meer informatie", "Kenmerken", "Voortstuwing", "Afmetingen"];
@@ -213,7 +216,7 @@ async function extractImageUrls() {
                 if (await element.isVisible({ timeout: 300 })) {
                   await element.click();
                   console.log(`   ✓ Expanded: ${section}`);
-                  await page.waitForTimeout(1000); // Wait for content to load
+                  await page.waitForTimeout(2000); // Wait for content to load
                   expanded = true;
                   break;
                 }
@@ -234,6 +237,71 @@ async function extractImageUrls() {
       } catch (e) {
         console.log(`   - ${section}: error expanding`);
       }
+    }
+
+    // Wait longer for any dynamic content to load (buttons may appear with delay)
+    console.log("⏳ Waiting 5 seconds for dynamic content to fully render...");
+    await page.waitForTimeout(5000);
+
+    // Now look for "Meer weergeven" buttons - try multiple selectors
+    console.log("\n🔍 Looking for 'Meer weergeven' buttons...");
+
+    const meerWeergevenSelectors = [
+      '.show-more-less-interaction button:has-text("Meer weergeven")',
+      'button:has-text("Meer weergeven")',
+      'a:has-text("Meer weergeven")',
+      '[class*="show-more"] button:has-text("Meer")',
+      '[class*="read-more"] button:has-text("Meer")',
+      'button:text-is("Meer weergeven")',
+      'button:text("Meer weergeven")',
+    ];
+
+    let totalClicked = 0;
+
+    for (const selector of meerWeergevenSelectors) {
+      try {
+        console.log(`   Trying selector: ${selector}`);
+        const buttons = page.locator(selector);
+        const count = await buttons.count();
+
+        if (count > 0) {
+          console.log(`   Found ${count} button(s) with this selector`);
+        }
+
+        for (let i = 0; i < count; i++) {
+          try {
+            const button = buttons.nth(i);
+            if (await button.isVisible({ timeout: 500 })) {
+              const buttonText = await button.textContent();
+              console.log(`   Attempting to click button with text: "${buttonText}"`);
+
+              await button.click();
+              totalClicked++;
+              console.log(`   ✓ Clicked: Meer weergeven button ${totalClicked}`);
+
+              // Wait for content to expand
+              await page.waitForTimeout(1000);
+
+              // Check if "Minder weergeven" appears
+              const minderButtons = page.locator('button:has-text("Minder weergeven")');
+              const minderCount = await minderButtons.count();
+              if (minderCount > 0) {
+                console.log(`   ✓ Confirmed: Found ${minderCount} "Minder weergeven" button(s)`);
+              }
+            }
+          } catch (e) {
+            console.log(`   - Error clicking button ${i}: ${e.message}`);
+          }
+        }
+      } catch (e) {
+        // Try next selector
+      }
+    }
+
+    if (totalClicked === 0) {
+      console.log("   - No 'Meer weergeven' buttons found or clicked");
+    } else {
+      console.log(`   ✅ Successfully clicked ${totalClicked} 'Meer weergeven' button(s)`);
     }
 
     console.log("✅ Section expansion complete");
