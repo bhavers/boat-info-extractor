@@ -89,8 +89,8 @@ const SITE_CONFIG = {
   },
   boat24: {
     name: "boat24",
-    imageSelector: 'img[src*="boat24.com"], img[src*="boat24.ch"]',
-    imageDomain: "boat24",
+    imageSelector: 'img[src*="boat24.com"], img[src*="boat24.ch"], img[src*="b24.co"]',
+    imageDomain: "b24.co",
     cookieSelectors: [
       'button:has-text("Alles toestaan")',
       'button:has-text("Aanpassen")',
@@ -305,7 +305,7 @@ async function extractImagesBoat24(page) {
       const src = await img.getAttribute("src");
       const srcset = await img.getAttribute("srcset");
 
-      if (src && (src.includes("boat24.com") || src.includes("boat24.ch"))) {
+      if (src && (src.includes("b24.co") || src.includes("boat24.com") || src.includes("boat24.ch"))) {
         // Get the highest quality version
         const cleanUrl = src.split("?")[0];
         imageUrls.add(cleanUrl);
@@ -314,7 +314,7 @@ async function extractImagesBoat24(page) {
       if (srcset) {
         const urls = srcset.split(",").map((s) => s.trim().split(" ")[0]);
         urls.forEach((url) => {
-          if (url.includes("boat24.com") || url.includes("boat24.ch")) {
+          if (url.includes("b24.co") || url.includes("boat24.com") || url.includes("boat24.ch")) {
             const cleanUrl = url.split("?")[0];
             imageUrls.add(cleanUrl);
           }
@@ -331,7 +331,7 @@ async function extractImagesBoat24(page) {
   console.log("🖼️  Checking for image gallery...");
   try {
     // Look for gallery images in the page
-    const galleryImages = await page.locator('img[src*="boat24"]').all();
+    const galleryImages = await page.locator('img[src*="b24.co"], img[src*="boat24"]').all();
 
     for (const img of galleryImages) {
       try {
@@ -356,7 +356,7 @@ async function extractImagesBoat24(page) {
       const style = await el.getAttribute("style");
       if (style) {
         const urlMatch = style.match(/url\(['"]?([^'"]+)['"]?\)/);
-        if (urlMatch && (urlMatch[1].includes("boat24.com") || urlMatch[1].includes("boat24.ch"))) {
+        if (urlMatch && (urlMatch[1].includes("b24.co") || urlMatch[1].includes("boat24.com") || urlMatch[1].includes("boat24.ch"))) {
           const cleanUrl = urlMatch[1].split("?")[0];
           imageUrls.add(cleanUrl);
         }
@@ -368,7 +368,7 @@ async function extractImagesBoat24(page) {
 
   // Method 4: Check for data attributes
   console.log("🔎 Checking data attributes...");
-  const dataImages = await page.locator('[data-src*="boat24"], [data-image*="boat24"]').all();
+  const dataImages = await page.locator('[data-src*="b24.co"], [data-src*="boat24"], [data-image*="b24.co"], [data-image*="boat24"]').all();
   for (const el of dataImages) {
     try {
       const dataSrc = (await el.getAttribute("data-src")) || (await el.getAttribute("data-image"));
@@ -707,7 +707,7 @@ async function extractImageUrls() {
           // Navigate to the PDF URL to trigger download (can take up to 8 seconds)
           // Note: page.goto will throw an error when download starts, so we catch it
           console.log("⏳ Waiting for download to start (this may take up to 10 seconds)...");
-          
+
           page.goto(pdfUrl, { waitUntil: "domcontentloaded", timeout: 15000 }).catch(() => {
             // Expected error when download starts
           });
