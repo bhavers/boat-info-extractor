@@ -1,16 +1,18 @@
 {
-  "name": "boat-image-extractor",
-  "version": "1.0.0",
-  "description": "Extract all image URLs from boat listing pages",
-  "main": "extract-images.js",
+  "name": "boat-info-extractor",
+  "version": "2.0.0",
+  "description": "Multi-site boat information extractor for botentekoop.nl and boat24.com",
+  "main": "extract-boat-info.js",
   "scripts": {
-    "start": "node extract-images.js",
+    "start": "node extract-boat-info.js",
     "install-browser": "npx playwright install chromium"
   },
   "keywords": [
     "playwright",
     "web-scraping",
-    "image-extraction"
+    "image-extraction",
+    "boat-listings",
+    "multi-site"
   ],
   "author": "",
   "license": "MIT",

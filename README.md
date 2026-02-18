@@ -1,17 +1,28 @@
-# Boat Image Extractor
+# Multi-Site Boat Information Extractor
 
-A Playwright-based tool to extract all image URLs from boat listing pages on botentekoop.nl.
+A Playwright-based tool to extract boat information and images from listing pages on multiple websites with automatic site detection.
+
+## Supported Sites
+
+- 🚤 **botentekoop.nl** - Dutch boat marketplace
+- ⛵ **boat24.com** - International boat marketplace
+
+The script automatically detects which site you're using and applies the appropriate extraction technique.
 
 ## Features
 
+- 🌐 **Multi-site support** with automatic detection
 - 🔍 Extracts images from multiple sources:
   - `<img>` tags (src and srcset attributes)
   - Background images (CSS)
   - Data attributes (data-src, data-image)
   - Gallery/lightbox overlays
 - 🖼️ Automatically navigates through image galleries
+- 📂 Organizes outputs by site name (filenames and folders)
+- 📅 Fetches Last-Modified dates for each image
+- 📄 Generates PDF and full-page screenshot of the listing
 - 🧹 Removes duplicate URLs and query parameters for clean image links
-- 💾 Saves all URLs to a text file for easy downloading
+- 💾 Saves all URLs to text files for easy downloading
 
 ## Prerequisites
 
@@ -42,102 +53,128 @@ npm run install-browser
 
 ### Basic Usage
 
-Run the script with a boat listing URL:
+Run the script with a boat listing URL from any supported site:
 
 ```bash
-node extract-images.js "https://www.botentekoop.nl/boot/YOUR-BOAT-LISTING-URL/"
-```
-
-Or use the default URL (Bavaria 37 Cruiser):
-
-```bash
-npm start
+node extract-boat-info.js "<URL>"
 ```
 
 **Examples:**
 
 ```bash
-# Extract images from a specific boat listing
-node extract-images.js "https://www.botentekoop.nl/boot/2005-bavaria-37-cruiser-10066579/"
+# Extract from botentekoop.nl
+node extract-boat-info.js "https://www.botentekoop.nl/boot/1997-van-de-stadt-56-10016503/"
 
-# Use npm start for the default URL
-npm start
+# Extract from boat24.com
+node extract-boat-info.js "https://www.boat24.com/nl/zeilboten/bavaria/bavaria-37-cruiser-cruiser-37/detail/662000/"
+
+# Skip image extraction (only capture page)
+node extract-boat-info.js "<URL>" --skip-images
 ```
 
-The script will:
+### What the Script Does
 
-1. Open a browser window (visible by default)
-2. Navigate to the boat listing page
-3. Accept cookies automatically
-4. Extract all image URLs
-5. Navigate through the image gallery
-6. Save all URLs to `image-urls.txt`
+1. **Detects the site** automatically from the URL
+2. Opens a browser window (visible by default)
+3. Navigates to the boat listing page
+4. Accepts cookies automatically
+5. Expands all collapsible sections (botentekoop.nl)
+6. Extracts all image URLs using site-specific techniques
+7. Navigates through image galleries
+8. Fetches Last-Modified dates for each image
+9. Captures the page as PDF and screenshot
+10. Saves everything with site-specific naming
 
-### Output
+### Output Files
 
-The script creates a file called `image-urls.txt` containing all unique image URLs, one per line:
+The script creates several files with site-specific naming:
+
+#### For botentekoop.nl:
+
+- `image-urls-botentekoop.txt` - Image filenames with Last-Modified dates
+- `image-urls-only-botentekoop.txt` - Full URLs for wget
+- `{boat-id}_{date}_botentekoop.pdf` - PDF capture of the page
+- `{boat-id}_{date}_botentekoop.png` - Full-page screenshot
+
+#### For boat24.com:
+
+- `image-urls-boat24.txt` - Image filenames with Last-Modified dates
+- `image-urls-only-boat24.txt` - Full URLs for wget
+- `boat24-{id}_{date}_boat24.pdf` - PDF capture of the page
+- `boat24-{id}_{date}_boat24.png` - Full-page screenshot
+
+**Example `image-urls-botentekoop.txt`:**
 
 ```
-https://images.boatsgroup.com/resize/1/65/79/2005-bavaria-37-cruiser-sail-10066579-20260127032033355-1.jpg
-https://images.boatsgroup.com/resize/1/65/79/2005-bavaria-37-cruiser-sail-10066579-20260127032033355-2.jpg
+2005-bavaria-37-cruiser-sail-10066579-20260127032033355-1.jpg | 2024-01-27 03:20:33
+2005-bavaria-37-cruiser-sail-10066579-20260127032033355-2.jpg | 2024-01-27 03:20:33
 ...
 ```
 
 ### Downloading Images
 
-Once you have the `image-urls.txt` file, you can download all images using various methods:
+Once you have the URLs file, download all images using wget:
 
-#### Method 1: Using wget (Mac/Linux)
+#### For botentekoop.nl:
 
 ```bash
-wget -i image-urls.txt -P ./images/
+wget -i image-urls-only-botentekoop.txt -P ./images-botentekoop/
 ```
 
-#### Method 2: Using curl (Mac/Linux)
+#### For boat24.com:
 
 ```bash
-mkdir -p images
+wget -i image-urls-only-boat24.txt -P ./images-boat24/
+```
+
+#### Alternative: Using curl (Mac/Linux)
+
+```bash
+# For botentekoop.nl
+mkdir -p images-botentekoop
 while read url; do
   filename=$(basename "$url")
-  curl -o "images/$filename" "$url"
-done < image-urls.txt
+  curl -o "images-botentekoop/$filename" "$url"
+done < image-urls-only-botentekoop.txt
+
+# For boat24.com
+mkdir -p images-boat24
+while read url; do
+  filename=$(basename "$url")
+  curl -o "images-boat24/$filename" "$url"
+done < image-urls-only-boat24.txt
 ```
 
-#### Method 3: Using PowerShell (Windows)
+#### Alternative: Using PowerShell (Windows)
 
 ```powershell
-New-Item -ItemType Directory -Force -Path images
-Get-Content image-urls.txt | ForEach-Object {
+# For botentekoop.nl
+New-Item -ItemType Directory -Force -Path images-botentekoop
+Get-Content image-urls-only-botentekoop.txt | ForEach-Object {
   $filename = Split-Path $_ -Leaf
-  Invoke-WebRequest -Uri $_ -OutFile "images\$filename"
+  Invoke-WebRequest -Uri $_ -OutFile "images-botentekoop\$filename"
+}
+
+# For boat24.com
+New-Item -ItemType Directory -Force -Path images-boat24
+Get-Content image-urls-only-boat24.txt | ForEach-Object {
+  $filename = Split-Path $_ -Leaf
+  Invoke-WebRequest -Uri $_ -OutFile "images-boat24\$filename"
 }
 ```
 
-#### Method 4: Browser Extension
-
-Use a browser extension like "Download All Images" or "Image Downloader" and paste the URLs.
-
 ## Configuration
-
-You can modify the script to extract images from different URLs:
-
-1. Open `extract-images.js`
-2. Change the `URL` constant at the top:
-
-```javascript
-const URL = "https://www.botentekoop.nl/boot/YOUR-BOAT-LISTING-URL/";
-```
 
 ### Headless Mode
 
 To run the browser in headless mode (no visible window):
 
-1. Open `extract-images.js`
+1. Open `extract-boat-info.js`
 2. Find this line:
 
 ```javascript
 const browser = await chromium.launch({
-  headless: false, // Set to true for production
+  headless: false,
 });
 ```
 
@@ -149,6 +186,30 @@ const browser = await chromium.launch({
 });
 ```
 
+### Skip Image Extraction
+
+Use the `--skip-images` flag to only capture the page (faster for testing):
+
+```bash
+node extract-images.js "<URL>" --skip-images
+```
+
+## Site-Specific Features
+
+### botentekoop.nl
+
+- Automatically expands all collapsible sections (Beschrijving, Contactinformatie, etc.)
+- Clicks "Meer weergeven" buttons to show full content
+- Navigates through image gallery overlay
+- Extracts images from boatsgroup.com CDN
+
+### boat24.com
+
+- Handles boat24.com and boat24.ch image domains
+- Extracts images from page and gallery
+- Supports boat24-specific cookie banners
+- Uses boat ID from URL for naming
+
 ## Troubleshooting
 
 ### "Cannot find module 'playwright'"
@@ -159,27 +220,52 @@ Run `npm install` to install dependencies.
 
 Run `npm run install-browser` to install the Chromium browser.
 
+### "Unsupported site" error
+
+Make sure your URL is from one of the supported sites:
+
+- botentekoop.nl
+- boat24.com
+
 ### No images found
 
 - Check if the URL is correct
 - The website structure might have changed
 - Try running with `headless: false` to see what's happening
+- Check the console output for specific errors
 
 ### Script hangs or takes too long
 
 - The script has a safety limit of 50 gallery navigations
 - You can adjust the `maxAttempts` variable in the script
 - Some pages might have slow-loading images
+- Use `--skip-images` flag to test page capture only
 
 ## How It Works
 
-The script uses multiple strategies to ensure all images are captured:
+The script uses a modular architecture with site-specific extractors:
 
-1. **Initial Page Scan**: Extracts all visible images from the page
-2. **Gallery Navigation**: Clicks through the image gallery/carousel to load lazy-loaded images
-3. **Background Images**: Checks CSS background-image properties
-4. **Data Attributes**: Looks for images stored in data attributes
-5. **Deduplication**: Removes duplicate URLs and cleans query parameters
+1. **Site Detection**: Automatically identifies the site from the URL
+2. **Configuration Loading**: Loads site-specific selectors and settings
+3. **Cookie Handling**: Accepts cookies using site-specific selectors
+4. **Section Expansion**: Expands collapsible content (site-specific)
+5. **Image Extraction**: Uses multiple strategies per site:
+   - Initial page scan for all `<img>` tags
+   - Gallery navigation for lazy-loaded images
+   - Background image extraction from CSS
+   - Data attribute checking
+6. **Metadata Fetching**: Gets Last-Modified dates via HTTP HEAD requests
+7. **Page Capture**: Generates PDF and full-page screenshot
+8. **Deduplication**: Removes duplicate URLs and cleans query parameters
+
+## Adding New Sites
+
+To add support for a new site:
+
+1. Add site detection in `detectSite()` function
+2. Add configuration in `SITE_CONFIG` object
+3. Create site-specific extraction function (e.g., `extractImagesNewSite()`)
+4. Update the main extraction logic to call your function
 
 ## License
 
@@ -187,4 +273,8 @@ MIT
 
 ## Author
 
-Created with Playwright for extracting boat listing images.
+Created with Playwright for extracting boat listing images from multiple marketplaces.
+
+---
+
+**Made with Bob** 🤖
