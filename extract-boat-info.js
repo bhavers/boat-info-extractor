@@ -686,9 +686,54 @@ async function extractImageUrls() {
     });
     console.log(`✅ Screenshot saved to: ${screenshotPath}`);
 
+    // Check for and download existing PDF on boat24.com
+    if (SITE === "boat24") {
+      console.log("\n🔍 Checking for downloadable PDF...");
+      try {
+        // Extract boat ID from URL and construct PDF URL
+        const urlMatch = URL.match(/\/detail\/(\d+)\/?/);
+        if (urlMatch) {
+          const boatIdNumber = urlMatch[1];
+          // Extract protocol and host from URL string
+          const protocolMatch = URL.match(/^(https?:\/\/[^\/]+)/);
+          const baseUrl = protocolMatch ? protocolMatch[1] : "https://www.boat24.com";
+          const pdfUrl = `${baseUrl}/pdf/ins/${boatIdNumber}.nl.pdf`;
+
+          console.log(`📥 Attempting to download PDF from: ${pdfUrl}`);
+
+          // Set up download handler before navigating
+          const downloadPromise = page.waitForEvent("download", { timeout: 15000 });
+
+          // Navigate to the PDF URL to trigger download (can take up to 8 seconds)
+          // Note: page.goto will throw an error when download starts, so we catch it
+          console.log("⏳ Waiting for download to start (this may take up to 10 seconds)...");
+          
+          page.goto(pdfUrl, { waitUntil: "domcontentloaded", timeout: 15000 }).catch(() => {
+            // Expected error when download starts
+          });
+
+          // Wait for download to start
+          const download = await downloadPromise;
+
+          // Save the downloaded PDF with our naming convention
+          const downloadedPdfPath = path.join(process.cwd(), `${baseFilename}_original.pdf`);
+          await download.saveAs(downloadedPdfPath);
+
+          console.log(`✅ Original PDF downloaded to: ${downloadedPdfPath}`);
+        } else {
+          console.log("ℹ️  Could not extract boat ID from URL");
+        }
+      } catch (e) {
+        console.log("ℹ️  PDF not available or could not be downloaded:", e.message);
+      }
+    }
+
     console.log("\n📁 Page captures:");
     console.log(`   - ${baseFilename}.pdf`);
     console.log(`   - ${baseFilename}.png`);
+    if (SITE === "boat24") {
+      console.log(`   - ${baseFilename}_original.pdf (if available)`);
+    }
   } catch (error) {
     console.error("❌ Error:", error.message);
     throw error;

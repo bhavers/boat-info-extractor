@@ -66,7 +66,7 @@ node extract-boat-info.js "<URL>"
 node extract-boat-info.js "https://www.botentekoop.nl/boot/1997-van-de-stadt-56-10016503/"
 
 # Extract from boat24.com
-node extract-boat-info.js "https://www.boat24.com/nl/zeilboten/bavaria/bavaria-37-cruiser-cruiser-37/detail/662000/"
+node extract-boat-info.js "https://www.boat24.com/nl/zeilboten/hanse/hanse-508/detail/695618/"
 
 # Skip image extraction (only capture page)
 node extract-boat-info.js "<URL>" --skip-images
@@ -79,11 +79,13 @@ node extract-boat-info.js "<URL>" --skip-images
 3. Navigates to the boat listing page
 4. Accepts cookies automatically
 5. Expands all collapsible sections (botentekoop.nl)
-6. Extracts all image URLs using site-specific techniques
-7. Navigates through image galleries
-8. Fetches Last-Modified dates for each image
-9. Captures the page as PDF and screenshot
-10. Saves everything with site-specific naming
+6. Clicks "Verder lezen" or "Meer weergeven" buttons to show full content
+7. Extracts all image URLs using site-specific techniques
+8. Navigates through image galleries and closes them properly
+9. Fetches Last-Modified dates for each image
+10. Captures the page as PDF and screenshot
+11. **Downloads original PDF if available (boat24.com)**
+12. Saves everything with site-specific naming
 
 ### Output Files
 
@@ -191,7 +193,7 @@ const browser = await chromium.launch({
 Use the `--skip-images` flag to only capture the page (faster for testing):
 
 ```bash
-node extract-images.js "<URL>" --skip-images
+node extract-boat-info.js "<URL>" --skip-images
 ```
 
 ## Site-Specific Features
@@ -206,9 +208,12 @@ node extract-images.js "<URL>" --skip-images
 ### boat24.com
 
 - Handles boat24.com and boat24.ch image domains
+- Clicks "Verder lezen" buttons to show full content
 - Extracts images from page and gallery
+- **Automatically downloads original PDF if available on the page**
 - Supports boat24-specific cookie banners
 - Uses boat ID from URL for naming
+- Original PDF saved as `{boat-id}_{date}_boat24_original.pdf`
 
 ## Troubleshooting
 
